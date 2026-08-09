@@ -1,0 +1,161 @@
+<task>
+  <context>
+    <dictionary>
+      <item name="backender">
+        an AI agent that designs the OpenAPI schema
+      </item>
+      <item name="system analyst agent">
+        an AI agent that interviews the user, asking for project details. Its role is to be the primary point of contact with the user.
+      </item>
+      <item name="database design agent">
+        an AI agent responsible for designing the database, ensuring it follows normal forms.
+      </item>
+      <item name="recommended OpenAPI schema rules">
+        At this stage, the softest possible schema check. Allow common constructs that are used everywhere.
+        This is a minimal but sufficient set of OpenAPI (3.x) fields for an early stage — excluding anything that can be added later.
+        <code type="markdown">
+        ## Root level
+
+        - **openapi** — spec version (e.g. `3.0.3` or `3.1.0`)
+        - **info** — `title`, `version`, `description` (a brief summary of the API)
+        - **servers** — at least one base URL (a placeholder like `http://localhost:3000` is fine)
+        - **paths** — the endpoints themselves
+
+        ## For each path/operation
+
+        - **summary** — one line describing what the endpoint does
+        - **operationId** — useful for code generation and for agents/tooling that parse the spec
+        - **parameters** — if there are path/query parameters: `name`, `in`, `required`, `schema`
+        - **requestBody** — for POST/PUT/PATCH: `content` → `application/json` → `schema`
+        - **responses** — at least one success code (200/201) and one error code (400 or a general 4xx), with `description` and `content.application/json.schema`
+
+        ## Schemas (components/schemas)
+
+        - Extract repeated objects into `components/schemas` and reference them via `$ref`
+        - For each schema: `type`, `properties` (with `type` for each field), `required` — this is enough at this stage, no need for `format`, `example`, `pattern`, or other refinements yet
+
+        ## What can safely be deferred
+
+        - `examples` / `example` (except when the API is unclear without them)
+        - `security` / `securitySchemes` (if auth hasn't been settled yet)
+        - `tags`, detailed `description` on every field
+        - `default`, `enum` bounds, `minLength`/`maximum`, and other validation details
+        - `deprecated`, `externalDocs`
+        - multiple `servers` for different environments
+        - `oneOf`/`anyOf`/`allOf` — adds complexity to reading; add these once real polymorphism actually appears
+
+        **Rule of thumb:** if a field doesn't affect "how to call the endpoint and what you get back," it can be deferred. Everything in the first block above typically covers 90% of the practical value a spec needs at the start (frontend can generate a client, QA can write tests, an agent/LLM can understand the contract).
+        </code>
+      </item>
+    </dictionary>
+  </context>
+  <use url="https://www.npmjs.com/package/@readme/openapi-parser?activeTab=readme" label="@readme/openapi-parser"/>
+  <use url="https://www.npmjs.com/package/@redocly/openapi-core" label="@redocly/openapi-core"/>
+  <task-title>Guardrails Improvements</task-title>
+  <task-body>
+    Right now the <b>backender AI agent</b> produces a schema, but we don't validate it. There's no guarantee it won't turn out invalid and break the frontend application downstream. The problem runs deeper — this would mean <strong>violating the principle of documentation accuracy and trustworthiness</strong> that the platform is built on.
+    The way out is to follow a two-pronged strategy.
+    <strategy>
+      <item>
+        The OpenAPI schema is valid — no syntax errors
+      </item>
+      <item>
+        The OpenAPI schema follows the rules and constraints we enforce at the platform level
+      </item>
+    </strategy>
+    Only these two conditions together guarantee the schema is valid and safe to pass further down the pipeline.
+  </task-body>
+  <expect>
+    <workflow name="getting-data">
+      <pipeline>
+        <step id="-1" fallback="true">
+          <script>
+            Exit the pipeline — it failed to complete due to an error
+          </script>
+          <return>
+            An error describing what went wrong
+          </return>
+        </step>
+        <step id="0" return-data="true">
+          <input from-step="3" optional="true" />
+          <script>
+          Fetch the list of entities — the <b>system analyst agent</b> should have already determined these.
+          </script>
+          <return>
+            If none exist, <goto step="-1" />
+            Otherwise, return the current results plus the result of step 3, if available.
+          </return>
+        </step>
+        <step id="1" depends-on="0" return-data="true">
+          <input from-step="0"/>
+          <script>
+            If none exist, <goto step="-1"/>
+            Determine the relationships between them. The <b>database design agent</b> should have already worked this out.
+          </script>
+          <return>
+            Return the database schema
+          </return>
+        </step>
+      </pipeline>
+    </workflow>
+    <workflow name="openapi-validation">
+      <pipeline>
+        <step id="-1" fallback="true">
+          <script>
+            Exit the pipeline — it failed to complete due to an error
+          </script>
+          <return>
+            An error describing what went wrong
+          </return>
+        </step>
+        <step id="0" return-data="true">
+          <input from-workflow="openapi-generation"/>
+          <script>
+            Validate the schema programmatically using <b>@readme/openapi-parser</b> to confirm there are no syntax errors and the format is strictly <strong>JSON</strong>.
+          </script>
+          <return>
+            The OpenAPI schema in JSON format
+          </return>
+        </step>
+        <step id="1" depends-on="0" return-data="true">
+          <input from-step="0" />
+          <script>
+            Check the schema against the <b>recommended OpenAPI schema rules</b>.
+            If there are errors, <goto step="-1" />
+          </script>
+          <return>
+            The OpenAPI schema
+          </return>
+        </step>
+      </pipeline>
+    </workflow>
+    <workflow name="openapi-generation">
+      <pipeline>
+        <step id="-1" fallback="true">
+          <script>
+            Exit the pipeline — it failed to complete due to an error
+          </script>
+          <return>
+            An error describing what went wrong
+          </return>
+        </step>
+        <step id="0" depends-on="0, 1" return-data="true">
+          <input from-workflow="getting-data" />
+          <script>
+            Build the OpenAPI schema from the data produced in steps 1 and 2.
+          </script>
+          <return>
+            Return the generated OpenAPI schema
+          </return>
+        </step>
+      </pipeline>
+    </workflow>
+    <workflow name="main" entrypoint="true">
+      <pipeline>
+        <step workflow="getting-data" />
+        <step workflow="openapi-generation" />
+        <step workflow="openapi-validation" />
+      </pipeline>
+    </workflow>
+  </expect>
+</task>
