@@ -18,8 +18,7 @@ Use cases these examples are good for:
 
 ```
 .
-├── openapi-schema-guardrails.xml       # RU: OpenAPI schema generation + validation pipeline
-├── openapi-schema-guardrails.en.xml    # EN: same prompt, translated
+├── openapi-schema-validation-task.xml    # EN: same prompt, translated
 └── README.md
 ```
 
@@ -34,7 +33,7 @@ This structure makes prompts easy to version, diff, and reuse — you can swap o
 
 ## How to use these examples
 
-1. Pick the prompt closest to your use case (e.g. `openapi-schema-guardrails.en.xml`).
+1. Pick the prompt closest to your use case (e.g. `openapi-schema-validation-task.xml`).
 2. Replace the placeholder agent names/roles in `<dictionary>` with the agents in your own system.
 3. Adjust the `<workflow>` steps to match your actual pipeline — add, remove, or reorder steps as needed.
 4. Feed the resulting XML to your LLM as a system or task prompt, or use it as a spec for your orchestration code.
@@ -47,8 +46,8 @@ If you have a similar structured prompt you'd like to share (workflow-based, gua
 
 ## About
 
-Written and maintained by [Aleksei Volkov](https://github.com/letnull19a), a fullstack developer working on AI-agent-driven developer tools. More projects and case studies: *(link to portfolio site, once live)*.
+Written and maintained by [Aleksei Volkov](https://github.com/letnull19a), a fullstack developer working on AI-agent-driven developer tools.
 
 ## License
 
-MIT — use these prompts freely in your own projects.
+MIT — use these prompts freely in your own projects. No war.
