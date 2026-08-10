@@ -1,0 +1,19 @@
+<task>
+  <use file="chat/[chatId]/layout.tsx" label="chat layout component" />
+  <use file="chat/[chatId]/page.tsx" label="chat page component" />
+  <task-title>Add chat export to Markdown</task-title>
+  <task-body>
+    Add two buttons: <strong>copy</strong> and <strong>download</strong> the chat history as <i>Markdown</i>.
+    <requirements>
+      <item>
+        Preserve chronological order of the chat
+      </item>
+      <item>
+        Render all tool calls as-is, including both input and output
+      </item>
+      <item>
+        Clearly mark the author of each message: <strong>agent or user</strong>
+      </item>
+    </requirements>
+  </task-body>
+</task>
